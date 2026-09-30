@@ -1,17 +1,114 @@
+# EcoPulse - Plataforma distribuída de monitoramento colaborativo de riscos ambientais
+#
+# Topologia (todos na rede bridge `ecopulse-net`):
+#
+#   mobile ──> api-gateway (nginx :4500)
+#                ├─ POST /api/reports        ──> ingestion-service ──┐ report.ingested.p{N}
+#                ├─ GET  /api/reports        ──> query-service        │
+#                ├─ POST /api/devices/*      ──> notification-service │
+#                └─ ws://  (WebSocket)       ──> notification-service │
+#                                                                      ▼
+#                                  RabbitMQ (topic exchange ecopulse.events)
+#                                      │ reports_partition_0..N-1
+#                                      ▼
+#                            geo-processing-service (x N réplicas / shards)
+#                                      │ report.processed   ──> PostGIS + Redis
+#                                      ▼
+#                                 alert-service
+#                                      │ alert.generated
+#                                      ▼
+#                             notification-service ──> WebSocket + Push FCM
+#
+# Escalar horizontalmente: docker compose up -d --scale geo-processing-service=3
+# Sharding estrito (1 partição por nó): docker compose -f docker-compose.yml -f docker-compose.sharded.yml up -d
+
+x-broker-env: &broker-env
+  RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
+  PARTITION_COUNT: ${PARTITION_COUNT:-4}
+  PARTITION_PREFIX_LENGTH: ${PARTITION_PREFIX_LENGTH:-5}
+  MAX_RETRIES: ${MAX_RETRIES:-3}
+  RETRY_BASE_DELAY_MS: ${RETRY_BASE_DELAY_MS:-2000}
+
+x-postgres-env: &postgres-env
+  POSTGRES_USER: ${POSTGRES_USER:-ecopulse_user}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ecopulse_pass}
+  POSTGRES_DB: ${POSTGRES_DB:-ECOPULSE_DB}
+  POSTGRES_HOST: db
+  POSTGRES_PORT: 5432
+
+x-redis-env: &redis-env
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+
 services:
-  backend:
+  # ------------------------------------------------------------------
+  # API Gateway: ponto único de entrada para o app móvel (porta 4500)
+  # ------------------------------------------------------------------
+  api-gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "${PORT:-4500}:80"
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - ingestion-service
+      - query-service
+      - notification-service
+    restart: unless-stopped
+    networks:
+      - ecopulse-net
+
+  # ------------------------------------------------------------------
+  # Microsserviços de aplicação (imagens e processos independentes)
+  # ------------------------------------------------------------------
+  ingestion-service:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "${PORT:-4500}:${PORT:-4500}"
-    volumes:
-      - ./backend:/usr/src/app
-      - /usr/src/app/node_modules
-    env_file:
-      - .env
+      dockerfile: services/ingestion-service/Dockerfile
     environment:
-      - NODE_ENV=development
+      <<: *broker-env
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      FAULT_INJECTION: ${FAULT_INJECTION:-false}
+    ports:
+      - "4501:3000"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ecopulse-net
+
+  query-service:
+    build:
+      context: ./backend
+      dockerfile: services/query-service/Dockerfile
+    environment:
+      <<: [*postgres-env, *redis-env]
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+    ports:
+      - "4502:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - ecopulse-net
+
+  geo-processing-service:
+    build:
+      context: ./backend
+      dockerfile: services/geo-processing-service/Dockerfile
+    environment:
+      <<: [*broker-env, *postgres-env, *redis-env]
+      NODE_ENV: ${NODE_ENV:-development}
+      # "all" = consome todas as partições (consumidores concorrentes ao usar --scale)
+      PARTITIONS: ${PARTITIONS:-all}
     depends_on:
       db:
         condition: service_healthy
@@ -19,10 +116,74 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
     networks:
       - ecopulse-net
 
+  alert-service:
+    build:
+      context: ./backend
+      dockerfile: services/alert-service/Dockerfile
+    environment:
+      <<: *broker-env
+      NODE_ENV: ${NODE_ENV:-development}
+      ALERT_MIN_SEVERITY: ${ALERT_MIN_SEVERITY:-3}
+      ALERT_RADIUS_KM: ${ALERT_RADIUS_KM:-5}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ecopulse-net
+
+  notification-service:
+    build:
+      context: ./backend
+      dockerfile: services/notification-service/Dockerfile
+    environment:
+      <<: [*broker-env, *postgres-env, *redis-env]
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      FIREBASE_SERVICE_ACCOUNT_PATH: /usr/src/app/firebase/service-account.json
+    volumes:
+      # Coloque o JSON da service account do Firebase em ./firebase/service-account.json
+      - ./firebase:/usr/src/app/firebase:ro
+    ports:
+      - "4503:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - ecopulse-net
+
+  # ------------------------------------------------------------------
+  # Job one-shot: aplica as migrações Drizzle uma única vez por deploy
+  # ------------------------------------------------------------------
+  db-migrate:
+    build:
+      context: ./backend
+      dockerfile: shared/Dockerfile
+    environment:
+      <<: *postgres-env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - ecopulse-net
+
+  # ------------------------------------------------------------------
+  # Infraestrutura
+  # ------------------------------------------------------------------
   db:
     image: postgis/postgis:15-3.3
     environment:
@@ -71,7 +232,8 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq/
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      # check_port_connectivity só passa quando o listener AMQP (5672) já aceita conexões
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
       interval: 15s
       timeout: 10s
       retries: 5

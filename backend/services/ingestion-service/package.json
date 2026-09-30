@@ -1,0 +1,23 @@
+{
+  "name": "@ecopulse/ingestion-service",
+  "version": "1.0.0",
+  "description": "EcoPulse - Serviço de ingestão: API REST que valida relatos e os publica no RabbitMQ (sem acesso a banco/cache)",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ecopulse/shared": "*",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6"
+  }
+}

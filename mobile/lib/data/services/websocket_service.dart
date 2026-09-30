@@ -3,22 +3,25 @@ import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
+import '../../core/app_config.dart';
+import '../../presentation/widgets/emergency_alert_dialog.dart';
+import 'push_notification_service.dart';
 
 class WebSocketService {
   WebSocketChannel? _channel;
-  final String _wsUrl = 'ws://10.0.2.2:4500';
+  final String _wsUrl = AppConfig.wsUrl;
   Timer? _locationTimer;
 
-  
+
   static final WebSocketService _instance = WebSocketService._internal();
   factory WebSocketService() => _instance;
   WebSocketService._internal();
 
-  
+
   void initialize(BuildContext context) {
     _connect(context);
-    
-    
+
+
     _locationTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _sendLocationUpdate();
     });
@@ -27,8 +30,8 @@ class WebSocketService {
   void _connect(BuildContext context) {
     try {
       _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
-      
-      
+
+
       _sendLocationUpdate();
 
       _channel!.stream.listen(
@@ -71,6 +74,10 @@ class WebSocketService {
       });
 
       _channel!.sink.add(payload);
+
+      // Mantém a localização do dispositivo atualizada também para o canal de push
+      // (alertas por raio geográfico com o app fechado).
+      PushNotificationService().registerDevice(lat: position.latitude, lng: position.longitude);
     } catch (e) {
       print('[WS] Erro ao enviar update de localização: $e');
     }
@@ -88,50 +95,11 @@ class WebSocketService {
     }
   }
 
+  // Modal compartilhado com o canal de push. Inclui o botão "Ver rota alternativa",
+  // que destaca no mapa o raio de exclusão ao redor do ponto de risco.
   void _showEmergencyModal(BuildContext context, dynamic payload) {
-    showDialog(
-      context: context,
-      barrierDismissible: false, 
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.red[50],
-          title: Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 30),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'ALERTA PREVENTIVO',
-                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                payload['message'] ?? 'Perigo detectado na região.',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Sugerimos que altere sua rota imediatamente e evite transitar por esta área.',
-                style: TextStyle(fontSize: 14),
-              )
-            ],
-          ),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('ESTOU CIENTE', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      }
-    );
+    final dialogContext = navigatorKey.currentContext ?? context;
+    showEmergencyAlertDialog(dialogContext, payload as Map<dynamic, dynamic>);
   }
 
   void dispose() {

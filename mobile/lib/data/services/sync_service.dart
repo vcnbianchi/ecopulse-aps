@@ -2,12 +2,13 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../dao/report_dao.dart';
+import '../../core/app_config.dart';
 
 class SyncService {
   final ReportDao _reportDao = ReportDao();
-  
-  
-  final String _apiUrl = 'http://10.0.2.2:4500/api/reports';
+
+  // POST /api/reports passa pelo API Gateway e cai no ingestion-service
+  final String _apiUrl = AppConfig.reportsEndpoint;
 
   bool _isSyncing = false;
 

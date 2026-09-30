@@ -1,0 +1,18 @@
+{
+  "name": "@ecopulse/geo-processing-service",
+  "version": "1.0.0",
+  "description": "EcoPulse - Processamento geoespacial particionado: consome reports_partition_N, persiste no PostGIS, indexa no Redis e publica report.processed",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ecopulse/shared": "*",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2"
+  }
+}

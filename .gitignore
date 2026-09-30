@@ -45,3 +45,7 @@ desktop.ini
 
 
 docker-data/
+
+# Firebase private keys / Android google-services
+firebase/*.json
+mobile/android/app/google-services.json

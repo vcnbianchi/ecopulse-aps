@@ -1,42 +1,35 @@
 {
   "name": "ecopulse-backend",
-  "version": "1.0.0",
-  "description": "EcoPulse - Backend de Monitoramento Colaborativo de Riscos Ambientais Urbanos e Qualidade do Ar",
+  "version": "2.0.0",
+  "description": "EcoPulse - Backend distribuído (microsserviços orientados a eventos) para Monitoramento Colaborativo de Riscos Ambientais Urbanos",
+  "private": true,
   "type": "module",
-  "main": "src/index.ts",
+  "workspaces": [
+    "shared",
+    "services/*"
+  ],
   "scripts": {
-    "start": "tsx src/index.ts",
-    "dev": "tsx watch src/index.ts",
-    "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:generate": "npm run db:generate --workspace=shared",
+    "db:migrate": "npm run db:migrate --workspace=shared",
+    "start:ingestion": "npm start --workspace=services/ingestion-service",
+    "start:query": "npm start --workspace=services/query-service",
+    "start:geo": "npm start --workspace=services/geo-processing-service",
+    "start:alert": "npm start --workspace=services/alert-service",
+    "start:notification": "npm start --workspace=services/notification-service"
   },
   "keywords": [
     "ecopulse",
     "environmental",
     "monitoring",
-    "crowdsourcing"
+    "crowdsourcing",
+    "microservices",
+    "event-driven"
   ],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "@types/ws": "^8.18.1",
-    "amqplib": "^2.0.1",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.45.2",
-    "express": "^5.2.1",
-    "ioredis": "^6.0.0",
-    "pg": "^8.23.0",
-    "postgres": "^3.4.9",
-    "ws": "^8.22.0"
-  },
   "devDependencies": {
-    "@types/amqplib": "^0.10.8",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
     "@types/node": "^26.5.0",
-    "drizzle-kit": "^0.31.10",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   }

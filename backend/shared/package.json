@@ -1,0 +1,33 @@
+{
+  "name": "@ecopulse/shared",
+  "version": "1.0.0",
+  "description": "EcoPulse - Código compartilhado entre microsserviços (broker, banco, cache, geo, contratos de eventos)",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./broker": "./src/broker/rabbitmq.ts",
+    "./db": "./src/db/index.ts",
+    "./redis": "./src/db/redis.ts",
+    "./schema": "./src/db/schema.ts",
+    "./geo": "./src/geo/index.ts",
+    "./events": "./src/events/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts"
+  },
+  "dependencies": {
+    "amqplib": "^2.0.1",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "ioredis": "^6.0.0",
+    "ngeohash": "^0.6.3",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.8",
+    "@types/ngeohash": "^0.6.8",
+    "drizzle-kit": "^0.31.10"
+  }
+}

@@ -1,0 +1,74 @@
+# Override de SHARDING ESTRITO: um nó (container) por partição geográfica.
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.sharded.yml up -d --build
+#
+# Cada instância consome apenas a fila reports_partition_{N} correspondente ao seu
+# quadrante geográfico (PARTITIONS=N). O serviço genérico `geo-processing-service`
+# (que consome todas as partições) é escalado para 0 réplicas, para não competir
+# com os shards pelas mensagens.
+
+x-geo-shard-env: &geo-shard-env
+  RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
+  PARTITION_COUNT: ${PARTITION_COUNT:-4}
+  PARTITION_PREFIX_LENGTH: ${PARTITION_PREFIX_LENGTH:-5}
+  MAX_RETRIES: ${MAX_RETRIES:-3}
+  RETRY_BASE_DELAY_MS: ${RETRY_BASE_DELAY_MS:-2000}
+  POSTGRES_USER: ${POSTGRES_USER:-ecopulse_user}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ecopulse_pass}
+  POSTGRES_DB: ${POSTGRES_DB:-ECOPULSE_DB}
+  POSTGRES_HOST: db
+  POSTGRES_PORT: 5432
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  NODE_ENV: ${NODE_ENV:-development}
+
+x-geo-shard: &geo-shard
+  build:
+    context: ./backend
+    dockerfile: services/geo-processing-service/Dockerfile
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+    db-migrate:
+      condition: service_completed_successfully
+  restart: unless-stopped
+  networks:
+    - ecopulse-net
+
+services:
+  geo-processing-service:
+    deploy:
+      replicas: 0
+
+  geo-processing-shard-0:
+    <<: *geo-shard
+    environment:
+      <<: *geo-shard-env
+      PARTITIONS: "0"
+      INSTANCE_ID: geo-shard-0
+
+  geo-processing-shard-1:
+    <<: *geo-shard
+    environment:
+      <<: *geo-shard-env
+      PARTITIONS: "1"
+      INSTANCE_ID: geo-shard-1
+
+  geo-processing-shard-2:
+    <<: *geo-shard
+    environment:
+      <<: *geo-shard-env
+      PARTITIONS: "2"
+      INSTANCE_ID: geo-shard-2
+
+  geo-processing-shard-3:
+    <<: *geo-shard
+    environment:
+      <<: *geo-shard-env
+      PARTITIONS: "3"
+      INSTANCE_ID: geo-shard-3

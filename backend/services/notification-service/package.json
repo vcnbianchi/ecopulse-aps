@@ -1,0 +1,27 @@
+{
+  "name": "@ecopulse/notification-service",
+  "version": "1.0.0",
+  "description": "EcoPulse - Serviço de notificação: consome alerts e dissemina via WebSocket (app aberto) e push FCM (app fechado), direcionados por raio geográfico",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ecopulse/shared": "*",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.2.1",
+    "firebase-admin": "^13.4.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/ws": "^8.18.1"
+  }
+}

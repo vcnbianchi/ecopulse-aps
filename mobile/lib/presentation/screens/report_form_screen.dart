@@ -29,6 +29,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
   final List<String> _categories = [
     'Alagamento',
     'Poluição',
+    'Ilha de Calor',
     'Foco de Incêndio',
     'Zona de Perigo',
     'Deslizamento',

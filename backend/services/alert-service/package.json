@@ -1,0 +1,17 @@
+{
+  "name": "@ecopulse/alert-service",
+  "version": "1.0.0",
+  "description": "EcoPulse - Serviço de regras de alerta: consome report.processed e publica alert.generated quando a severidade justifica",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ecopulse/shared": "*",
+    "dotenv": "^17.4.2"
+  }
+}
