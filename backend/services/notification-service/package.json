@@ -16,7 +16,7 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
-    "firebase-admin": "^13.4.0",
+    "firebase-admin": "^14.5.0",
     "ws": "^8.22.0"
   },
   "devDependencies": {
