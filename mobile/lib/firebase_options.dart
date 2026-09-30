@@ -1,19 +1,3 @@
-// PLACEHOLDER gerado manualmente.
-//
-// Substitua este arquivo pelo gerado automaticamente pela FlutterFire CLI:
-//
-//   dart pub global activate flutterfire_cli
-//   flutterfire configure --project=<seu-projeto-firebase> --platforms=android
-//
-// O comando preenche as chaves reais do projeto (apiKey, appId, messagingSenderId,
-// projectId) para o package `com.ecopulse.ecopulse_mobile`. Com a inicialização
-// "Dart-only" (Firebase.initializeApp(options: ...)) não é necessário aplicar o
-// plugin Gradle google-services nem o arquivo google-services.json.
-//
-// Enquanto os valores abaixo forem placeholders, o app continua funcionando
-// normalmente (mapa, relatos offline-first, alertas via WebSocket); apenas o
-// canal de push notifications fica desabilitado.
-
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 

@@ -21,7 +21,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     WebSocketService().initialize(context);
 
-    // "Ver rota alternativa" (modal) ou toque na push notification: volta para o mapa
     _alertZoneService.navigationRequests.addListener(_goToMap);
   }
 

@@ -7,10 +7,6 @@ import { DEVICES_GEO_KEY, isPushEnabled } from './push.js';
 
 const router = Router();
 
-// POST /api/devices/register
-// Body: { deviceId, fcmToken, lat, lng, platform? }
-// Persiste (upsert) o token FCM + última localização no PostgreSQL (fonte da verdade)
-// e indexa a posição no Redis (GEOADD `devices_geo`) para busca rápida por raio.
 router.post('/register', async (req: Request, res: Response) => {
   try {
     const { deviceId, fcmToken, lat, lng, platform } = req.body || {};

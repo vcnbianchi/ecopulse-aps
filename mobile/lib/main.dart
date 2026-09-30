@@ -7,7 +7,6 @@ import 'data/services/push_notification_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase + handler de push em segundo plano (precisa ser antes do runApp)
   final pushService = PushNotificationService();
   await pushService.initializeFirebase();
 
@@ -18,7 +17,6 @@ Future<void> main() async {
 
   runApp(const MyApp());
 
-  // Permissão de notificação, token FCM e registro do dispositivo no backend
   pushService.initialize();
 }
 

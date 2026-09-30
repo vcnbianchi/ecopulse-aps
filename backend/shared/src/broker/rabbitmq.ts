@@ -14,15 +14,10 @@ import { PARTITION_COUNT } from '../geo/index.js';
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672';
 
-// Política de retries com backoff exponencial (item 3 da proposta):
-// tentativa 1 -> RETRY_BASE_DELAY_MS, tentativa 2 -> 2x, tentativa 3 -> 4x ...
-// Após MAX_RETRIES a mensagem é rejeitada e cai na Dead Letter Queue.
 export const MAX_RETRIES = parseInt(process.env.MAX_RETRIES || '3');
 export const RETRY_BASE_DELAY_MS = parseInt(process.env.RETRY_BASE_DELAY_MS || '2000');
 
 const RETRY_COUNT_HEADER = 'x-retry-count';
-// O headers exchange do RabbitMQ IGNORA headers iniciados por "x-" na comparação,
-// por isso o seletor da fila de retry usa um header sem esse prefixo.
 const RETRY_DELAY_HEADER = 'retry-delay-ms';
 
 let connection: ChannelModel | null = null;
@@ -37,32 +32,14 @@ export function retryDelays(): number[] {
   return delays;
 }
 
-/**
- * Declara toda a topologia de forma idempotente. Todos os serviços executam isto
- * na inicialização, então não importa a ordem em que os containers sobem.
- *
- *  ecopulse.events (topic)
- *    report.ingested.p{N} -> reports_partition_{N}   (DLQ: reports_dead_letter)
- *    report.processed     -> reports_processed       (DLQ: reports_processed_dead_letter)
- *    alert.generated      -> alerts                  (DLQ: alerts_dead_letter)
- *
- *  ecopulse.retry (headers)  retry-delay-ms=2000 -> reports_retry_2000ms (TTL 2s)  --DLX--> ecopulse.events
- *                            retry-delay-ms=4000 -> reports_retry_4000ms (TTL 4s)  --DLX--> ecopulse.events
- *                            retry-delay-ms=8000 -> reports_retry_8000ms (TTL 8s)  --DLX--> ecopulse.events
- *
- * A mensagem expirada na fila de retry volta ao topic exchange com a MESMA routing key
- * original, ou seja, retorna exatamente para a fila/partição de onde saiu.
- */
 async function assertTopology(ch: Channel): Promise<void> {
   await ch.assertExchange(EVENTS_EXCHANGE, 'topic', { durable: true });
   await ch.assertExchange(RETRY_EXCHANGE, 'headers', { durable: true });
 
-  // Dead Letter Queues (comportamento original preservado: nack(msg, false, false) -> DLQ)
   await ch.assertQueue(QUEUES.reportsDeadLetter, { durable: true });
   await ch.assertQueue(QUEUES.reportsProcessedDeadLetter, { durable: true });
   await ch.assertQueue(QUEUES.alertsDeadLetter, { durable: true });
 
-  // Filas particionadas por quadrante geográfico (sharding horizontal)
   for (let i = 0; i < PARTITION_COUNT; i++) {
     const queue = partitionQueueName(i);
     await ch.assertQueue(queue, {
@@ -87,7 +64,6 @@ async function assertTopology(ch: Channel): Promise<void> {
   });
   await ch.bindQueue(QUEUES.alerts, EVENTS_EXCHANGE, ROUTING_KEYS.alertGenerated);
 
-  // Filas de retry com TTL crescente (padrão "retry queue + dead-lettering de volta")
   for (const delay of retryDelays()) {
     const queue = retryQueueName(delay);
     await ch.assertQueue(queue, {
@@ -102,8 +78,6 @@ async function assertTopology(ch: Channel): Promise<void> {
   }
 }
 
-// O RabbitMQ pode levar >30s para aceitar conexões AMQP no primeiro boot, por isso
-// a janela de tentativas é generosa (30 x 3s = 90s) antes de desistir.
 export async function connectRabbitMQ(retries = 30, delay = 3000): Promise<void> {
   while (retries > 0) {
     try {
@@ -117,7 +91,6 @@ export async function connectRabbitMQ(retries = 30, delay = 3000): Promise<void>
       });
       connection.on('close', () => {
         if (shuttingDown) return;
-        // Deixa o orquestrador (Docker) reiniciar o processo em estado limpo.
         console.error('[RabbitMQ] Connection closed unexpectedly. Exiting for restart.');
         process.exit(1);
       });
@@ -142,7 +115,6 @@ export function getChannel(): Channel | null {
   return channel;
 }
 
-/** Publica um evento no topic exchange `ecopulse.events`. */
 export async function publishEvent(routingKey: string, payload: unknown, headers: Record<string, unknown> = {}): Promise<boolean> {
   if (!channel) {
     console.error('[RabbitMQ] Channel not initialized. Cannot publish message.');
@@ -164,10 +136,6 @@ export async function publishEvent(routingKey: string, payload: unknown, headers
   }
 }
 
-/**
- * Publica um relato ingerido na partição geográfica correta.
- * Routing key: report.ingested.p{partition} -> fila reports_partition_{partition}
- */
 export async function publishReport(reportData: ReportIngestedEvent): Promise<boolean> {
   return publishEvent(reportIngestedRoutingKey(reportData.partition), reportData);
 }
@@ -179,12 +147,6 @@ export interface MessageMeta {
   retryCount: number;
 }
 
-/**
- * Contrato do handler:
- *   - retorna true  -> ack (processado com sucesso)
- *   - retorna false -> nack sem requeue -> DLQ imediatamente (mensagem inválida / "poison message")
- *   - lança exceção -> falha transitória: reenfileira com backoff exponencial; após MAX_RETRIES vai para a DLQ
- */
 export type MessageHandler<T> = (payload: T, meta: MessageMeta) => Promise<boolean>;
 
 export interface ConsumeOptions {
@@ -193,8 +155,6 @@ export interface ConsumeOptions {
 }
 
 function stripDeathHeaders(headers: Record<string, unknown>): Record<string, unknown> {
-  // Os headers x-death/x-first-death-*/x-last-death-* são gerados pelo broker a cada
-  // dead-lettering; removê-los antes de republicar evita reencodar estruturas internas.
   const clean: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(headers)) {
     if (key === 'x-death' || key.startsWith('x-first-death') || key.startsWith('x-last-death')) continue;
@@ -227,7 +187,6 @@ function scheduleRetry(msg: ConsumeMessage, queue: string, retryCount: number, l
   channel!.ack(msg);
 }
 
-/** Consome uma fila com política de retries + DLQ. */
 export async function consumeQueue<T>(queue: string, onMessage: MessageHandler<T>, options: ConsumeOptions = {}): Promise<void> {
   if (!channel) throw new Error('[RabbitMQ] Channel not initialized');
 
@@ -279,7 +238,6 @@ export async function consumeQueue<T>(queue: string, onMessage: MessageHandler<T
   console.log(`${label} Consumer listening on ${queue}`);
 }
 
-/** Consome uma partição geográfica específica (reports_partition_{N}). */
 export async function consumePartition(partition: number, onMessage: MessageHandler<ReportIngestedEvent>, options: ConsumeOptions = {}): Promise<void> {
   return consumeQueue<ReportIngestedEvent>(partitionQueueName(partition), onMessage, options);
 }

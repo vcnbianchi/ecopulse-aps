@@ -5,9 +5,6 @@ import type { ReportIngestedEvent } from '@ecopulse/shared/events';
 
 const router = Router();
 
-// Quando FAULT_INJECTION=true, um relato com `simulateFailure: true` força uma falha
-// transitória no geo-processing-service, permitindo demonstrar em sala a política de
-// retries com backoff exponencial antes da Dead Letter Queue.
 const FAULT_INJECTION = process.env.FAULT_INJECTION === 'true';
 
 router.post('/', async (req: Request, res: Response) => {
@@ -27,8 +24,6 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid coordinates.' });
     }
 
-    // Particionamento geoespacial: o GeoHash é calculado aqui (função pura, sem I/O)
-    // e o prefixo define a fila/partição que receberá o evento.
     const geo = resolveGeoPartition(latitude, longitude);
 
     const enrichedData: ReportIngestedEvent = {

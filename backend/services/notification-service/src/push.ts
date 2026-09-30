@@ -7,11 +7,6 @@ import redisClient from '@ecopulse/shared/redis';
 import { getDistanceFromLatLonInKm } from '@ecopulse/shared/geo';
 import type { AlertGeneratedEvent } from '@ecopulse/shared/events';
 
-// Push notifications via Firebase Cloud Messaging (FCM).
-// Cobre o caso não atendido pelo WebSocket: app fechado ou em segundo plano.
-// Credenciais: arquivo JSON da service account do Firebase, apontado por
-// FIREBASE_SERVICE_ACCOUNT_PATH (ou GOOGLE_APPLICATION_CREDENTIALS). Sem o arquivo o
-// serviço sobe normalmente e apenas desabilita o canal push (WebSocket continua ativo).
 
 export const DEVICES_GEO_KEY = 'devices_geo';
 
@@ -41,11 +36,6 @@ export function isPushEnabled(): boolean {
   return pushEnabled;
 }
 
-/**
- * Localiza dispositivos registrados dentro do raio do alerta.
- * Caminho rápido: índice geoespacial do Redis (GEOSEARCH em `devices_geo`).
- * Fallback: varredura no PostgreSQL com Haversine (caso o índice Redis esteja vazio).
- */
 export async function findDevicesWithinRadius(lat: number, lng: number, radiusKm: number): Promise<{ deviceId: string; fcmToken: string }[]> {
   let deviceIds: string[] = [];
 
@@ -74,7 +64,6 @@ export async function findDevicesWithinRadius(lat: number, lng: number, radiusKm
     .map((d) => ({ deviceId: d.deviceId, fcmToken: d.fcmToken }));
 }
 
-/** Envia o alerta por push para todos os dispositivos dentro do raio. Retorna o total entregue. */
 export async function sendPushNotifications(alert: AlertGeneratedEvent): Promise<number> {
   const targets = await findDevicesWithinRadius(alert.lat, alert.lng, alert.radiusKm);
 
@@ -90,9 +79,6 @@ export async function sendPushNotifications(alert: AlertGeneratedEvent): Promise
 
   const tokens = Array.from(new Set(targets.map((t) => t.fcmToken)));
 
-  // Mensagem "data-only" com prioridade alta: o app Flutter trata em
-  // FirebaseMessaging.onBackgroundMessage e exibe a notificação nativa do sistema.
-  // Todos os valores de `data` devem ser strings (restrição do FCM).
   const response = await admin.messaging().sendEachForMulticast({
     tokens,
     data: {
@@ -114,7 +100,6 @@ export async function sendPushNotifications(alert: AlertGeneratedEvent): Promise
     },
   });
 
-  // Higieniza tokens inválidos/expirados para não insistir em dispositivos desinstalados
   const invalidTokens: string[] = [];
   response.responses.forEach((r, idx) => {
     if (!r.success) {

@@ -7,29 +7,28 @@ import '../../core/app_config.dart';
 class SyncService {
   final ReportDao _reportDao = ReportDao();
 
-  // POST /api/reports passa pelo API Gateway e cai no ingestion-service
   final String _apiUrl = AppConfig.reportsEndpoint;
 
   bool _isSyncing = false;
 
-  
+
   void initializeNetworkListener() {
     Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
-      
+
       if (!results.contains(ConnectivityResult.none)) {
         syncPendingReports();
       }
     });
   }
 
-  
+
   Future<void> syncPendingReports() async {
-    if (_isSyncing) return; 
+    if (_isSyncing) return;
     _isSyncing = true;
 
     try {
       final pendingReports = await _reportDao.getPendingReports();
-      
+
       if (pendingReports.isEmpty) {
         _isSyncing = false;
         return;
@@ -53,14 +52,14 @@ class SyncService {
 
           if (response.statusCode == 202 || response.statusCode == 200 || response.statusCode == 201) {
             print('[SyncService] Relato ID ${report.id} sincronizado com sucesso.');
-            
+
             await _reportDao.markAsSynced(report.id!);
           } else {
             print('[SyncService] Falha ao sincronizar o relato ID ${report.id}. HTTP Status: ${response.statusCode}');
           }
         } catch (e) {
           print('[SyncService] Erro de conexão durante sync do relato ID ${report.id}: $e');
-          
+
           break;
         }
       }

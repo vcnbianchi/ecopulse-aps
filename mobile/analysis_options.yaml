@@ -1,12 +1,3 @@
-
-
-
-
-
-
-
-
-
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
@@ -16,19 +7,19 @@ analyzer:
     - ios/**
 
 linter:
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
+
+
+
+
   rules:
-    
-    
+
+
 
 
 

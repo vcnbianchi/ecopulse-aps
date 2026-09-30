@@ -4,10 +4,6 @@ import cors from 'cors';
 import { connectRabbitMQ, closeRabbitMQ } from '@ecopulse/shared/broker';
 import reportsRouter from './routes/reports.js';
 
-// ingestion-service
-// Responsabilidade única: receber relatos via REST, validar o payload, calcular a
-// partição geográfica e publicar o evento `report.ingested.p{N}` no RabbitMQ.
-// NÃO possui acesso ao PostgreSQL nem ao Redis (desacoplamento total da persistência).
 
 const PORT = process.env.PORT || 3000;
 const app = express();

@@ -1,27 +1,3 @@
-# EcoPulse - Plataforma distribuída de monitoramento colaborativo de riscos ambientais
-#
-# Topologia (todos na rede bridge `ecopulse-net`):
-#
-#   mobile ──> api-gateway (nginx :4500)
-#                ├─ POST /api/reports        ──> ingestion-service ──┐ report.ingested.p{N}
-#                ├─ GET  /api/reports        ──> query-service        │
-#                ├─ POST /api/devices/*      ──> notification-service │
-#                └─ ws://  (WebSocket)       ──> notification-service │
-#                                                                      ▼
-#                                  RabbitMQ (topic exchange ecopulse.events)
-#                                      │ reports_partition_0..N-1
-#                                      ▼
-#                            geo-processing-service (x N réplicas / shards)
-#                                      │ report.processed   ──> PostGIS + Redis
-#                                      ▼
-#                                 alert-service
-#                                      │ alert.generated
-#                                      ▼
-#                             notification-service ──> WebSocket + Push FCM
-#
-# Escalar horizontalmente: docker compose up -d --scale geo-processing-service=3
-# Sharding estrito (1 partição por nó): docker compose -f docker-compose.yml -f docker-compose.sharded.yml up -d
-
 x-broker-env: &broker-env
   RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
   PARTITION_COUNT: ${PARTITION_COUNT:-4}
@@ -41,9 +17,6 @@ x-redis-env: &redis-env
   REDIS_PORT: 6379
 
 services:
-  # ------------------------------------------------------------------
-  # API Gateway: ponto único de entrada para o app móvel (porta 4500)
-  # ------------------------------------------------------------------
   api-gateway:
     image: nginx:1.27-alpine
     ports:
@@ -58,9 +31,6 @@ services:
     networks:
       - ecopulse-net
 
-  # ------------------------------------------------------------------
-  # Microsserviços de aplicação (imagens e processos independentes)
-  # ------------------------------------------------------------------
   ingestion-service:
     build:
       context: ./backend
@@ -107,7 +77,6 @@ services:
     environment:
       <<: [*broker-env, *postgres-env, *redis-env]
       NODE_ENV: ${NODE_ENV:-development}
-      # "all" = consome todas as partições (consumidores concorrentes ao usar --scale)
       PARTITIONS: ${PARTITIONS:-all}
     depends_on:
       db:
@@ -148,7 +117,6 @@ services:
       PORT: 3000
       FIREBASE_SERVICE_ACCOUNT_PATH: /usr/src/app/firebase/service-account.json
     volumes:
-      # Coloque o JSON da service account do Firebase em ./firebase/service-account.json
       - ./firebase:/usr/src/app/firebase:ro
     ports:
       - "4503:3000"
@@ -165,9 +133,6 @@ services:
     networks:
       - ecopulse-net
 
-  # ------------------------------------------------------------------
-  # Job one-shot: aplica as migrações Drizzle uma única vez por deploy
-  # ------------------------------------------------------------------
   db-migrate:
     build:
       context: ./backend
@@ -181,9 +146,6 @@ services:
     networks:
       - ecopulse-net
 
-  # ------------------------------------------------------------------
-  # Infraestrutura
-  # ------------------------------------------------------------------
   db:
     image: postgis/postgis:15-3.3
     environment:
@@ -232,7 +194,6 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq/
     healthcheck:
-      # check_port_connectivity só passa quando o listener AMQP (5672) já aceita conexões
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
       interval: 15s
       timeout: 10s

@@ -3,12 +3,6 @@ import { randomUUID } from 'node:crypto';
 import { connectRabbitMQ, closeRabbitMQ, consumeQueue, publishEvent, type MessageMeta } from '@ecopulse/shared/broker';
 import { QUEUES, ROUTING_KEYS, type ReportProcessedEvent, type AlertGeneratedEvent } from '@ecopulse/shared/events';
 
-// alert-service
-// Consome `report.processed` e aplica a regra de negócio de alerta. Hoje a regra é
-// `severity >= ALERT_MIN_SEVERITY` (3 por padrão), mas por estar isolada em um serviço
-// próprio pode evoluir (ex.: densidade de relatos por quadrante, histórico, horário)
-// sem tocar na ingestão, no processamento geoespacial ou na notificação.
-// Quando aplicável, publica `alert.generated` na fila `alerts`.
 
 const ALERT_MIN_SEVERITY = parseInt(process.env.ALERT_MIN_SEVERITY || '3');
 const ALERT_RADIUS_KM = parseFloat(process.env.ALERT_RADIUS_KM || '5');

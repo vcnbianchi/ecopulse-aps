@@ -9,11 +9,6 @@ import { initPushNotifications } from './push.js';
 import devicesRouter from './devices.js';
 import { startAlertConsumer } from './alertConsumer.js';
 
-// notification-service
-// Consome a fila `alerts` (evento alert.generated) e dissemina o alerta por dois canais:
-//   1. WebSocket -> clientes conectados dentro do raio (app aberto);
-//   2. Push FCM  -> dispositivos registrados dentro do raio (app fechado/segundo plano).
-// Também expõe POST /api/devices/register para o app cadastrar seu token FCM + localização.
 
 const PORT = process.env.PORT || 3000;
 const app = express();

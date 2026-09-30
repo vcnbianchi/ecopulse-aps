@@ -8,10 +8,8 @@ import 'package:geolocator/geolocator.dart';
 import '../../core/app_config.dart';
 import '../../data/services/alert_zone_service.dart';
 
-/// Camadas ambientais renderizadas sobre o mapa, derivadas da densidade de relatos.
 enum MapLayerKind { markers, aqi, heatIsland, density, exclusionZone }
 
-/// Célula agregada de uma "mancha" (heatmap simplificado por grade).
 class _DensityCell {
   final LatLng center;
   final int count;
@@ -37,7 +35,6 @@ class _MapScreenState extends State<MapScreen> {
   bool _mapReady = false;
   LatLng _initialCenter = const LatLng(-23.5505, -46.6333);
 
-  // Tamanho da célula da grade usada para agregar relatos (~0.005° ≈ 550 m)
   static const double _cellSizeDeg = 0.005;
 
   final Set<MapLayerKind> _enabledLayers = {
@@ -139,12 +136,7 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Camadas ambientais (heatmap simplificado por densidade de relatos)
-  // ---------------------------------------------------------------------------
 
-  /// Agrupa os relatos que satisfazem [filter] em células de grade e devolve o
-  /// centróide, a contagem e a severidade máxima de cada célula.
   List<_DensityCell> _aggregate(bool Function(String category) filter) {
     final Map<String, List<dynamic>> buckets = {};
 
@@ -171,8 +163,6 @@ class _MapScreenState extends State<MapScreen> {
     }).toList();
   }
 
-  /// Converte células agregadas em círculos semitransparentes cujo raio e opacidade
-  /// crescem com a contagem de relatos (e a severidade) da célula.
   List<CircleMarker> _buildHeatCircles(List<_DensityCell> cells, Color color) {
     return cells.map((cell) {
       final intensity = min(1.0, (cell.count * 0.18) + (cell.maxSeverity * 0.06));
@@ -197,9 +187,6 @@ class _MapScreenState extends State<MapScreen> {
   List<CircleMarker> _densityLayer() =>
       _buildHeatCircles(_aggregate((_) => true), Colors.teal);
 
-  // ---------------------------------------------------------------------------
-  // Roteamento preventivo simplificado: raio de exclusão ao redor do risco
-  // ---------------------------------------------------------------------------
 
   void _onAlertZoneChanged() {
     if (!mounted) return;
@@ -217,7 +204,6 @@ class _MapScreenState extends State<MapScreen> {
     final zone = _alertZoneService.zone.value;
     if (zone == null) return [];
     return [
-      // Raio de exclusão (área a evitar)
       CircleMarker(
         point: zone.center,
         radius: zone.radiusKm * 1000,
@@ -226,7 +212,6 @@ class _MapScreenState extends State<MapScreen> {
         borderColor: Colors.red,
         borderStrokeWidth: 3,
       ),
-      // Núcleo do risco
       CircleMarker(
         point: zone.center,
         radius: 150,

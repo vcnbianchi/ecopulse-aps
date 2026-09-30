@@ -5,9 +5,6 @@ import { pgClient } from '@ecopulse/shared/db';
 import redisClient from '@ecopulse/shared/redis';
 import reportsRouter from './reportsRouter.js';
 
-// query-service
-// Lado de LEITURA da plataforma (padrão CQRS): expõe GET /api/reports com o padrão
-// cache-aside (Redis -> PostgreSQL -> repopula o cache). Não publica nem consome eventos.
 
 const PORT = process.env.PORT || 3000;
 const app = express();

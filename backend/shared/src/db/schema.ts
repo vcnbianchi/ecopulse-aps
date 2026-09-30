@@ -41,8 +41,6 @@ export const reports = pgTable('reports', {
   severity: integer('severity').notNull(),
   description: text('description'),
   location: geometryPoint('location').notNull(),
-  // GeoHash (precisão 9 ≈ 4.8m x 4.8m) calculado no processamento geoespacial.
-  // O prefixo do geohash define a partição (shard) em que o relato foi processado.
   geohash: varchar('geohash', { length: 12 }),
   partition: integer('partition'),
   status: varchar('status', { length: 20 }).default('active'),
@@ -57,9 +55,6 @@ export const reports = pgTable('reports', {
   ];
 });
 
-// Dispositivos registrados para push notifications (FCM).
-// A última localização conhecida permite direcionar alertas por raio geográfico
-// mesmo quando o app está fechado (sem conexão WebSocket ativa).
 export const devices = pgTable('devices', {
   id: serial('id').primaryKey(),
   deviceId: varchar('device_id', { length: 255 }).notNull().unique(),

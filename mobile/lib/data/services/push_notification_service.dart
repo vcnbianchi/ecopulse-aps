@@ -12,7 +12,6 @@ import '../../firebase_options.dart';
 import '../../presentation/widgets/emergency_alert_dialog.dart';
 import 'alert_zone_service.dart';
 
-/// Canal Android usado para as notificações nativas de alerta.
 const AndroidNotificationChannel ecopulseAlertsChannel = AndroidNotificationChannel(
   'ecopulse_alerts',
   'Alertas EcoPulse',
@@ -22,28 +21,15 @@ const AndroidNotificationChannel ecopulseAlertsChannel = AndroidNotificationChan
 
 final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
-/// Handler executado em um isolate separado quando uma push chega com o app em
-/// segundo plano ou fechado. Precisa ser função top-level anotada com vm:entry-point.
-/// O backend envia mensagens "data-only", então somos nós que exibimos a
-/// notificação nativa do sistema.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   } catch (_) {
-    // Já inicializado ou sem configuração: segue para exibir a notificação mesmo assim.
   }
   await PushNotificationService.showLocalNotification(message.data);
 }
 
-/// Integração com Firebase Cloud Messaging (FCM).
-///
-/// - obtém o token FCM na inicialização e o registra no backend junto com a
-///   localização atual (POST /api/devices/register);
-/// - em primeiro plano, exibe o modal de alerta (mesmo do WebSocket);
-/// - em segundo plano/fechado, exibe notificação nativa (handler acima);
-/// - ao tocar na notificação, abre o app já no mapa centralizado no alerta,
-///   com o raio de exclusão destacado.
 class PushNotificationService {
   static final PushNotificationService _instance = PushNotificationService._internal();
   factory PushNotificationService() => _instance;
@@ -57,8 +43,6 @@ class PushNotificationService {
 
   bool get isReady => _firebaseReady;
 
-  /// Deve ser chamado ANTES de runApp: inicializa o Firebase e registra o handler
-  /// de background (exigência do firebase_messaging).
   Future<void> initializeFirebase() async {
     try {
       await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -70,8 +54,6 @@ class PushNotificationService {
     }
   }
 
-  /// Deve ser chamado APÓS runApp: pede permissão, obtém o token e registra o
-  /// dispositivo no backend. Também configura os listeners de mensagens.
   Future<void> initialize() async {
     await _initLocalNotifications();
 
@@ -126,7 +108,6 @@ class PushNotificationService {
     await android?.createNotificationChannel(ecopulseAlertsChannel);
     await android?.requestNotificationsPermission();
 
-    // App aberto a partir do toque em uma notificação local (app estava fechado)
     final launchDetails = await _localNotifications.getNotificationAppLaunchDetails();
     final payload = launchDetails?.notificationResponse?.payload;
     if ((launchDetails?.didNotificationLaunchApp ?? false) && payload != null) {
@@ -136,7 +117,6 @@ class PushNotificationService {
     }
   }
 
-  /// Exibe a notificação nativa do sistema a partir dos `data` da mensagem FCM.
   static Future<void> showLocalNotification(Map<String, dynamic> data) async {
     if (data['type'] != 'proximity_alert') return;
 
@@ -176,7 +156,6 @@ class PushNotificationService {
     }
   }
 
-  /// Toque na notificação: abre o mapa centralizado no alerta com o raio de exclusão.
   void _handleNotificationTap(Map<dynamic, dynamic> data) {
     final zone = AlertZone.fromPayload(data);
     if (zone == null) return;
@@ -210,9 +189,6 @@ class PushNotificationService {
     }
   }
 
-  /// Registra (ou atualiza) o dispositivo no backend: token FCM + última localização.
-  /// Chamado na inicialização, ao renovar o token e periodicamente junto com o
-  /// `location_update` do WebSocket, para manter o raio de alerta atualizado.
   Future<void> registerDevice({double? lat, double? lng}) async {
     if (!_firebaseReady || _fcmToken == null) return;
 

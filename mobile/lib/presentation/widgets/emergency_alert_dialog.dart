@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/services/alert_zone_service.dart';
 
-/// Modal de alerta preventivo, compartilhado pelos dois canais de alerta
-/// (WebSocket em primeiro plano e push FCM recebido com o app aberto).
-///
-/// O botão "Ver rota alternativa" ativa o roteamento preventivo simplificado:
-/// o mapa é centralizado no ponto de risco e um raio de exclusão é destacado.
 void showEmergencyAlertDialog(BuildContext context, Map<dynamic, dynamic> payload) {
   final zone = AlertZone.fromPayload(payload);
 

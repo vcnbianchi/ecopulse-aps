@@ -4,10 +4,6 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { db, pgClient } from './index.js';
 
-// Script one-shot: aplica as migrações Drizzle e encerra.
-// É executado pelo container `db-migrate` do docker-compose antes dos microsserviços
-// (depends_on: condition: service_completed_successfully), garantindo que apenas UM
-// processo migre o banco mesmo com várias réplicas de geo-processing-service.
 const migrationsFolder = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
 
 async function runMigrations() {

@@ -5,14 +5,6 @@ import redisClient from '@ecopulse/shared/redis';
 import { computeGeohash, partitionForGeohash } from '@ecopulse/shared/geo';
 import { ROUTING_KEYS, type ReportIngestedEvent, type ReportProcessedEvent } from '@ecopulse/shared/events';
 
-// Worker de processamento geoespacial (evolução do reportWorker.ts do monólito).
-// Diferenças em relação à versão original:
-//   - consome N filas particionadas (uma por quadrante geográfico) em vez de uma fila única;
-//   - grava o geohash e a partição de cada relato no PostgreSQL;
-//   - NÃO dispara alertas diretamente: publica o evento `report.processed` para que o
-//     alert-service decida (desacoplamento via EDA);
-//   - falhas transitórias (exceções) passam pela política de retries com backoff
-//     antes de cair na DLQ; falhas de validação vão direto para a DLQ (poison message).
 
 export async function startReportWorker(partitions: number[], instanceId: string) {
   console.log('[Worker] Starting Geo Processing Worker...');
@@ -27,12 +19,10 @@ export async function startReportWorker(partitions: number[], instanceId: string
         return false;
       }
 
-      // Injeção de falhas para demonstração de retries/DLQ (habilitada via FAULT_INJECTION no ingestion-service)
       if (data.simulateFailure) {
         throw new Error('Simulated transient failure (simulateFailure=true)');
       }
 
-      // Recalcula o geohash para garantir consistência mesmo que o produtor mude de versão
       const geohash = data.geohash || computeGeohash(data.latitude, data.longitude);
       const resolvedPartition = data.partition ?? partitionForGeohash(geohash);
 
@@ -76,7 +66,6 @@ export async function startReportWorker(partitions: number[], instanceId: string
         insertedReport.id.toString()
       );
 
-      // Evento de domínio: quem quiser reagir (alert-service, analytics...) assina `report.processed`
       const processedEvent: ReportProcessedEvent = {
         id: insertedReport.id,
         category: data.category,

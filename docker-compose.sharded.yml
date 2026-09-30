@@ -1,13 +1,3 @@
-# Override de SHARDING ESTRITO: um nó (container) por partição geográfica.
-#
-# Uso:
-#   docker compose -f docker-compose.yml -f docker-compose.sharded.yml up -d --build
-#
-# Cada instância consome apenas a fila reports_partition_{N} correspondente ao seu
-# quadrante geográfico (PARTITIONS=N). O serviço genérico `geo-processing-service`
-# (que consome todas as partições) é escalado para 0 réplicas, para não competir
-# com os shards pelas mensagens.
-
 x-geo-shard-env: &geo-shard-env
   RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
   PARTITION_COUNT: ${PARTITION_COUNT:-4}

@@ -6,16 +6,6 @@ import redisClient from '@ecopulse/shared/redis';
 import { PARTITION_COUNT } from '@ecopulse/shared/geo';
 import { startReportWorker } from './reportWorker.js';
 
-// geo-processing-service
-// Consome as filas particionadas por quadrante geográfico (reports_partition_N).
-//
-// Modos de operação (variável PARTITIONS):
-//   - "all" (padrão): a instância consome TODAS as partições. Com
-//     `docker compose up --scale geo-processing-service=3` as réplicas atuam como
-//     consumidores concorrentes, e o RabbitMQ distribui as mensagens de cada fila
-//     entre elas (balanceamento de carga).
-//   - "0" ou "1,3": a instância consome APENAS as partições listadas (sharding
-//     estrito, ver docker-compose.sharded.yml): cada nó é dono de um quadrante.
 
 export const INSTANCE_ID = process.env.INSTANCE_ID || os.hostname();
 

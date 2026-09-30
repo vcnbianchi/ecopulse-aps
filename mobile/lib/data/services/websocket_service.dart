@@ -75,8 +75,6 @@ class WebSocketService {
 
       _channel!.sink.add(payload);
 
-      // Mantém a localização do dispositivo atualizada também para o canal de push
-      // (alertas por raio geográfico com o app fechado).
       PushNotificationService().registerDevice(lat: position.latitude, lng: position.longitude);
     } catch (e) {
       print('[WS] Erro ao enviar update de localização: $e');
@@ -95,8 +93,6 @@ class WebSocketService {
     }
   }
 
-  // Modal compartilhado com o canal de push. Inclui o botão "Ver rota alternativa",
-  // que destaca no mapa o raio de exclusão ao redor do ponto de risco.
   void _showEmergencyModal(BuildContext context, dynamic payload) {
     final dialogContext = navigatorKey.currentContext ?? context;
     showEmergencyAlertDialog(dialogContext, payload as Map<dynamic, dynamic>);

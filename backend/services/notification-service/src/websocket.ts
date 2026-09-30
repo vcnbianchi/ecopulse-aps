@@ -2,9 +2,6 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { getDistanceFromLatLonInKm } from '@ecopulse/shared/geo';
 
-// Servidor WebSocket (migrado do monólito sem alteração de comportamento observável):
-// mantém em memória a última localização de cada cliente e, ao receber um alerta,
-// entrega `proximity_alert` apenas para quem está dentro do raio (Haversine).
 
 interface ClientData {
   ws: WebSocket;

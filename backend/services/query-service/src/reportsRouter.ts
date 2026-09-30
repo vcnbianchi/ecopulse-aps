@@ -6,10 +6,6 @@ import { desc } from 'drizzle-orm';
 
 const router = Router();
 
-// GET /api/reports - padrão cache-aside (preservado do monólito original):
-//   1. tenta o Redis (lista `recent_reports`, mantida pelo geo-processing-service);
-//   2. em cache miss, consulta o PostgreSQL;
-//   3. repopula o cache com o resultado.
 router.get('/', async (req: Request, res: Response) => {
   try {
     const cachedReports = await redisClient.lrange('recent_reports', 0, -1);

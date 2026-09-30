@@ -1,16 +1,5 @@
 import ngeohash from 'ngeohash';
 
-// --- Particionamento geoespacial ------------------------------------------
-//
-// Cada relato recebe um GeoHash (precisão 9 ≈ célula de 4.8m x 4.8m).
-// O PREFIXO do geohash (PARTITION_PREFIX_LENGTH caracteres) identifica um
-// quadrante maior (precisão 5 ≈ 4.9km x 4.9km). Um hash consistente desse
-// prefixo (FNV-1a) módulo PARTITION_COUNT define a partição/shard.
-//
-// Consequência: relatos geograficamente próximos caem sempre na MESMA partição
-// (localidade espacial), e quadrantes diferentes são distribuídos entre as
-// N filas `reports_partition_N`, consumidas por instâncias distintas do
-// geo-processing-service (sharding horizontal / balanceamento de carga).
 
 export const GEOHASH_PRECISION = parseInt(process.env.GEOHASH_PRECISION || '9');
 export const PARTITION_COUNT = parseInt(process.env.PARTITION_COUNT || '4');
@@ -20,7 +9,6 @@ export function computeGeohash(lat: number, lng: number, precision: number = GEO
   return ngeohash.encode(lat, lng, precision);
 }
 
-/** Hash consistente (FNV-1a 32 bits) de uma string. */
 export function fnv1a(input: string): number {
   let hash = 0x811c9dc5;
   for (let i = 0; i < input.length; i++) {
@@ -30,7 +18,6 @@ export function fnv1a(input: string): number {
   return hash >>> 0;
 }
 
-/** Índice da partição (0..PARTITION_COUNT-1) para um geohash, usando o prefixo. */
 export function partitionForGeohash(geohash: string, partitionCount: number = PARTITION_COUNT): number {
   const prefix = geohash.substring(0, PARTITION_PREFIX_LENGTH);
   return fnv1a(prefix) % partitionCount;
@@ -51,7 +38,6 @@ export function resolveGeoPartition(lat: number, lng: number): GeoPartitionInfo 
   };
 }
 
-// --- Distância (Haversine) ------------------------------------------------
 
 export function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;

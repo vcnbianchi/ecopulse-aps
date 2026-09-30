@@ -13,13 +13,13 @@ class ReportFormScreen extends StatefulWidget {
 
 class _ReportFormScreenState extends State<ReportFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  
-  
+
+
   String _category = 'Alagamento';
   double _severity = 1;
   String _description = '';
-  
-  
+
+
   Position? _currentPosition;
   bool _isLoadingLocation = false;
   bool _isSubmitting = false;
@@ -81,7 +81,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
   Future<void> _submitReport() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (_currentPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor, obtenha sua localização atual primeiro.')),
@@ -104,17 +104,17 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         longitude: _currentPosition!.longitude,
       );
 
-      
+
       await _reportDao.insertReport(report);
 
-      
+
       SyncService().syncPendingReports();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Relato salvo localmente com sucesso!')),
         );
-        
+
         _formKey.currentState!.reset();
         setState(() {
           _currentPosition = null;
@@ -161,7 +161,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               Text('Severidade: ${_severity.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold)),
               Slider(
                 value: _severity,
@@ -177,7 +177,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               const Text('Descrição', style: TextStyle(fontWeight: FontWeight.bold)),
               TextFormField(
                 decoration: const InputDecoration(
@@ -190,7 +190,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                 },
               ),
               const SizedBox(height: 24),
-              
+
               const Text('Localização', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Container(
@@ -205,14 +205,14 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        _currentPosition != null 
+                        _currentPosition != null
                           ? 'Lat: ${_currentPosition!.latitude.toStringAsFixed(4)}, Lng: ${_currentPosition!.longitude.toStringAsFixed(4)}'
                           : 'Localização não capturada',
                       ),
                     ),
                     ElevatedButton(
                       onPressed: _isLoadingLocation ? null : _getCurrentLocation,
-                      child: _isLoadingLocation 
+                      child: _isLoadingLocation
                         ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Text('Obter GPS'),
                     ),
@@ -220,7 +220,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              
+
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
@@ -229,7 +229,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
                     foregroundColor: Colors.white,
                   ),
                   onPressed: _isSubmitting ? null : _submitReport,
-                  child: _isSubmitting 
+                  child: _isSubmitting
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text('SALVAR RELATO (Offline)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
